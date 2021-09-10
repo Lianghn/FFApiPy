@@ -1,6 +1,6 @@
 # ExperimentApiPy
 
-Under "ExperimentApiPy/config", create file "config.ini"
+Under "ExperimentApiPy/config", create file "config.ini".
 In this file, put lines:
 
     [elastic]
