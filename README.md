@@ -11,7 +11,7 @@ Then repalce localhost by your elasticsearch url.
 
 Run:
 
-python ExperimentApiPy.py
+    $>python ExperimentApiPy.py
 
 
 To Get Data from ElasticSearch according Index and Id:
