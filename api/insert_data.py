@@ -1,4 +1,4 @@
-from flask_app import app
+from ExperimentApiPy import app
 from api.elastic_connection import connect_elasticsearch
 from flask import request
 from flask import jsonify
