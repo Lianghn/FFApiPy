@@ -1,6 +1,10 @@
 from ExperimentApiPy import app
 from api.elastic_connection import connect_elasticsearch
 from flask import jsonify, request
+from datetime import datetime
+import numpy as np
+import scipy as sp
+from scipy import stats
 
 es = connect_elasticsearch()
 
@@ -26,14 +30,140 @@ def search_data():
     #             {"index":"experiments", "key":"Type", "value":"pageview"}
 
     data = request.get_json()
-    query_body = {
-        "query": {
-            "match": {
-                data['key']: data['value'] 
+    if data['value'] :
+        query_body = {
+            "query": {
+                "match": {
+                    data['key']: data['value'] 
+                }
             }
         }
-    }
-
+    else :
+        query_body = {
+            "query": {
+                "match_all": {
+                }
+            }
+        }
     res = es.search(index=data['index'], body=query_body)
     print(res)
     return jsonify(res['hits']['hits'])
+
+
+# Get Exp Results
+@app.route('/MVPExperimentResults', methods=['POST'])
+def expt_data():
+    #inputdata json format:
+    #  {'Flag' : 
+    #        {'Id' : FlagId,
+    #         'BaselineVariation': 'var2', 
+    #          'Variations: [value1, value2, value3]
+    #          }, 
+    #    'ExperimentId': Id,
+    #    'ExperimentStartTime': Timestamp1, 
+    #    'ExperimentEndTime': Timestamp2
+    #   }
+    # Get data from frontend
+
+    startime = datetime.now()
+    data = request.get_json()
+    # Query Flag data
+    query_body_A = {
+        "query": {
+            "match": {
+                'FeatureFlagId': data['Flag']['Id'] 
+            }
+        }
+    }
+    res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
+
+ # Query Expt data   
+    query_body_B = {
+        "query": {
+            "match": {
+                'Type' : 'pageview'
+            }
+        }
+    }
+    res_B = es.search(index="experiments", body=query_body_B)
+
+# Stat of Flag
+    dict_var_user = {}
+    dict_var_occurence = {}
+    for item in res_A['hits']['hits']:
+        if item['_source']['VariationValue'] not in list(dict_var_occurence.keys()) :
+            dict_var_occurence[ item['_source']['VariationValue'] ]  = 1
+            dict_var_user[ item['_source']['VariationValue'] ]  = [item['_source']['FFUserName']]
+        else :
+            dict_var_occurence[ item['_source']['VariationValue'] ] = dict_var_occurence[ item['_source']['VariationValue'] ] + 1
+            dict_var_user[ item['_source']['VariationValue'] ]  =  dict_var_user[ item['_source']['VariationValue'] ] + [item['_source']['FFUserName']]
+
+    print('dictionary of flag var:occurence')
+    print(dict_var_occurence)
+
+    for item in dict_var_user.keys():
+        dict_var_user[item] = list(set(dict_var_user[item]))
+    print('dictionary of flag var:usr')
+    print(dict_var_user)
+    
+    dict_var_user['Green'] = ['user1630749856']
+    dict_var_user['A'] = ['user1630750520','user1630749287']
+
+    dict_expt_occurence = {}
+    for item in res_B['hits']['hits']:
+        for it in dict_var_user.keys():
+            if item['_source']['User']['FFUserName'] in dict_var_user[it] :
+                if it not in list(dict_expt_occurence.keys()):
+                    dict_expt_occurence[it] = 1
+                else:
+                    dict_expt_occurence[it] = 1 + dict_expt_occurence[it]
+    print('dictionary of expt var:occurence')
+    print(dict_expt_occurence)
+
+    # output format : 
+    #      {'var1' : 
+    #            { 'TargetEventNumber' : Number1, 
+    #              'UnqueVisitorsNumber' : Number2,  
+    #              'ConversionRate': Number3, 
+    #              'ChangesToBaseline': Number4, 
+    #              'ConfidentInterval': (value_min, value_max), 
+    #              'p_value': Number5 
+    #             }, 
+    #         'var2' :
+    #                ......
+    #       } 
+    # Get Confidence interval
+    def mean_confidence_interval(data, confidence=0.95):
+        a = 1.0 * np.array(data)
+        n = len(a)
+        m, se = np.mean(a), sp.stats.sem(a)
+        h = se * sp.stats.t.ppf((1 + confidence) / 2., n-1)
+        print(m)
+        print(h)
+        return m, m-h, m+h
+
+
+    output = {}
+    var_baseline = data['Flag']['BaselineVariation']
+    BaselineRate = dict_expt_occurence[var_baseline]/dict_var_occurence[var_baseline]
+    dist_baseline = [1 for i in range(dict_expt_occurence[var_baseline])] + [0 for i in range(dict_var_occurence[var_baseline]-dict_expt_occurence[var_baseline])] 
+    print(dist_baseline)
+    for item in dict_var_occurence.keys(): 
+        if item in  dict_expt_occurence.keys():
+            dist_item = [1 for i in range(dict_expt_occurence[item])] + [0 for i in range(dict_var_occurence[item]-dict_expt_occurence[item])]
+            print(dist_item)
+            rate, min, max = mean_confidence_interval(dist_item)
+            output[item] = {'TargetEventNumber' : dict_expt_occurence[item],  
+                            'FlagUseNumber' : dict_var_occurence[item], 
+                            'ConversionRate':   round(rate,2),
+                            'ChangeToBaseline' : round(rate-BaselineRate,2),
+                            'ConfidenceInterval': [ 0 if round(min,2)<0 else round(min,2), 1 if round(max,2)>1 else round(max,2)], 
+                            'P_value': round(1-stats.ttest_ind(dist_baseline, dist_item).pvalue,2)
+                            } 
+
+
+    print(output)
+    endtime = datetime.now()
+    print('processing time:') 
+    print((endtime-startime))
+    return jsonify(output)

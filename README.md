@@ -6,8 +6,10 @@ In this file, put lines:
     [elastic]
     es_host =  http://localhost:9200
 
-Then repalce localhost by your elasticsearch url.
-
+    [elasticpasswd]
+    es_passwd =  elastic_password
+    
+Then repalce localhost by your elasticsearch url  & replace elastic_password by password for user 'elastic'.
 
 Run:
 
