@@ -25,3 +25,10 @@ To Search Data from ElasticSearch according Index and Type:
 
     $>curl localhost:5000/SearchDataByIndexAndKey -d '{"index":"experiments", "key":"Type", "value":"pageview"}' -H 'Content-Type: application/json'
 
+
+To Get Experiement Result from ElasticSearch :
+
+    $>curl localhost:5000/MVPExperimentResults -d '{"Flag" : {"Id": "FF__2__2__4__ffc-multi-variation-cache-test-data1-1630579986592","BaselineVariation": "A", "Variations" : ["A","Green"]}, "ExperiementID": "3"}' -H 'Content-Type: application/json' 
+
+Visualiz the Json data in : https://jsongrid.com/json-grid
+
