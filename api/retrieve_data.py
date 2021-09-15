@@ -14,7 +14,7 @@ def home():
     return jsonify(message)
 
 
-
+# GetData From Index + Id
 @app.route('/GetData', methods=['POST'])
 def get_data():
     #json format:
@@ -23,7 +23,7 @@ def get_data():
     results = es.get(index=data['index'], id=data['id'])
     return jsonify(results['_source'])
 
-
+# Get Data From Ony Index & Index + Type
 @app.route('/SearchDataByIndexAndKey', methods=['POST'])
 def search_data():
     #json format:
@@ -53,6 +53,7 @@ def search_data():
 # Get Exp Results
 @app.route('/MVPExperimentResults', methods=['POST'])
 def expt_data():
+    #########################################################
     #inputdata json format:
     #  {'Flag' : 
     #        {'Id' : FlagId,
@@ -63,8 +64,21 @@ def expt_data():
     #    'ExperimentStartTime': Timestamp1, 
     #    'ExperimentEndTime': Timestamp2
     #   }
+    ##########################################################
+    # output format : 
+    #      {'var1' : 
+    #            { 'TargetEventNumber' : Number1, 
+    #              'UnqueVisitorsNumber' : Number2,  
+    #              'ConversionRate': Number3, 
+    #              'ChangesToBaseline': Number4, 
+    #              'ConfidentInterval': (value_min, value_max), 
+    #              'p_value': Number5 
+    #             }, 
+    #         'var2' :
+    #                ......
+    #       } 
+    ############################################################
     # Get data from frontend
-
     startime = datetime.now()
     data = request.get_json()
     # Query Flag data
@@ -105,10 +119,12 @@ def expt_data():
         dict_var_user[item] = list(set(dict_var_user[item]))
     print('dictionary of flag var:usr')
     print(dict_var_user)
-    
+
+    # To delete when real data comes   
     dict_var_user['Green'] = ['user1630749856']
     dict_var_user['A'] = ['user1630750520','user1630749287']
 
+    # Stat of Expt.
     dict_expt_occurence = {}
     for item in res_B['hits']['hits']:
         for it in dict_var_user.keys():
@@ -120,18 +136,6 @@ def expt_data():
     print('dictionary of expt var:occurence')
     print(dict_expt_occurence)
 
-    # output format : 
-    #      {'var1' : 
-    #            { 'TargetEventNumber' : Number1, 
-    #              'UnqueVisitorsNumber' : Number2,  
-    #              'ConversionRate': Number3, 
-    #              'ChangesToBaseline': Number4, 
-    #              'ConfidentInterval': (value_min, value_max), 
-    #              'p_value': Number5 
-    #             }, 
-    #         'var2' :
-    #                ......
-    #       } 
     # Get Confidence interval
     def mean_confidence_interval(data, confidence=0.95):
         a = 1.0 * np.array(data)
@@ -142,16 +146,14 @@ def expt_data():
         print(h)
         return m, m-h, m+h
 
-
     output = {}
     var_baseline = data['Flag']['BaselineVariation']
     BaselineRate = dict_expt_occurence[var_baseline]/dict_var_occurence[var_baseline]
+    # Preprare Baseline data sample distribution for Pvalue Calculation 
     dist_baseline = [1 for i in range(dict_expt_occurence[var_baseline])] + [0 for i in range(dict_var_occurence[var_baseline]-dict_expt_occurence[var_baseline])] 
-    print(dist_baseline)
     for item in dict_var_occurence.keys(): 
         if item in  dict_expt_occurence.keys():
             dist_item = [1 for i in range(dict_expt_occurence[item])] + [0 for i in range(dict_var_occurence[item]-dict_expt_occurence[item])]
-            print(dist_item)
             rate, min, max = mean_confidence_interval(dist_item)
             output[item] = {'TargetEventNumber' : dict_expt_occurence[item],  
                             'FlagUseNumber' : dict_var_occurence[item], 
@@ -160,9 +162,7 @@ def expt_data():
                             'ConfidenceInterval': [ 0 if round(min,2)<0 else round(min,2), 1 if round(max,2)>1 else round(max,2)], 
                             'P_value': round(1-stats.ttest_ind(dist_baseline, dist_item).pvalue,2)
                             } 
-
-
-    print(output)
+#    print(output)
     endtime = datetime.now()
     print('processing time:') 
     print((endtime-startime))
