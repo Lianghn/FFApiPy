@@ -52,7 +52,7 @@ def search_data():
 
 
 # Get Exp Results
-@app.route('/MVPExperimentResults', methods=['POST'])
+@app.route('/api/ExperimentResults', methods=['POST'])
 def expt_data():
     #########################################################
     #inputdata json format:
@@ -143,8 +143,6 @@ def expt_data():
         n = len(a)
         m, se = np.mean(a), sp.stats.sem(a)
         h = se * sp.stats.t.ppf((1 + confidence) / 2., n-1)
-        print(m)
-        print(h)
         return m, m-h, m+h
 
     output = []
@@ -165,14 +163,15 @@ def expt_data():
                             'changeToBaseline' : round(rate-BaselineRate,2),
                             'confidenceInterval': confidenceInterval, 
                             'pValue': pValue,
+                            'isBaseline': True if data['Flag']['BaselineVariation'] == item else False, 
                             'isWinner': False,
                             'isInvalid': True if pValue < 0.95 else False
                             } 
                         )
-    print(output)
+    # Get winner variation
     listValid = [output.index(item) for item in output if item['isInvalid'] == False]
-#    listValid = [0,1]
-    print(listValid)
+    #    listValid = [0,1]
+    # If at least one variation is valid:
     if len(listValid) != 0: 
         dictValid = {}
         for index in listValid:
@@ -180,7 +179,7 @@ def expt_data():
         maxRateIndex = [k for k, v in sorted(dictValid.items(), key=lambda item: item[1])][-1]        
         output[maxRateIndex]['isWinner'] = True
 
-#   print(output)
+    #   print(output)
     endtime = datetime.now()
     print('processing time:') 
     print((endtime-startime))
