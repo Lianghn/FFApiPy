@@ -6,7 +6,8 @@ import numpy as np
 import scipy as sp
 from scipy import stats
 import collections
-
+from datetime import datetime
+ 
 es = connect_elasticsearch()
 
 @app.route('/', methods=['GET'])
@@ -92,7 +93,7 @@ def expt_data():
     }
 
     res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
-
+    print(datetime.now().strftime('%s'))
  # Query Expt data   
     query_body_B = {
     "query": {
@@ -105,9 +106,11 @@ def expt_data():
             "filter": {
                 "range": {
                     "TimeStamp": {
-                        "gte": data['StartExptTime'],
-                        "lte": data['EndExptTime']
-                    }
+# when no start time selected: defaut time to 2000-01-01:01H
+                        "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
+# when no end time selected: defaut time to NOW
+                        "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
+                   }
                 }
             }
         }

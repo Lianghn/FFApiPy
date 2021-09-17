@@ -31,4 +31,7 @@ To Get Experiement Result from ElasticSearch :
 
     $>curl localhost:5000/api/ExperimentResults -d '{"Flag" : {"Id": "FF__2__2__4__ffc-multi-variation-cache-test-data1-1630579986592","BaselineVariation": "A", "Variations" : ["A","Green"]}, "EventName": "TestEvent", "StartExptTime": "-2183958941000", "EndExptTime": "7283148259000"}' -H 'Content-Type: application/json'
 
+"StartExptTime" : ""  When No Start Time selected, same for "EndExptTime".
+
+
 Visualiz the Json data in : https://jsongrid.com/json-grid
