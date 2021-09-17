@@ -62,9 +62,9 @@ def expt_data():
     #         'BaselineVariation': 'var2', 
     #          'Variations: [value1, value2, value3]
     #          }, 
-    #    'ExperimentId': Id,
-    #    'ExperimentStartTime': Timestamp1, 
-    #    'ExperimentEndTime': Timestamp2
+    #    'EventName': xxx,
+    #    'StartExptTime': '946731600000', 
+    #    'EndExptTime': Timestamp2
     #   }
     ##########################################################
     # output format : 
