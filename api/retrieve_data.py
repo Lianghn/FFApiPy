@@ -5,6 +5,7 @@ from datetime import datetime
 import numpy as np
 import scipy as sp
 from scipy import stats
+import collections
 
 es = connect_elasticsearch()
 
@@ -146,7 +147,7 @@ def expt_data():
         print(h)
         return m, m-h, m+h
 
-    output = {}
+    output = []
     var_baseline = data['Flag']['BaselineVariation']
     BaselineRate = dict_expt_occurence[var_baseline]/dict_var_occurence[var_baseline]
     # Preprare Baseline data sample distribution for Pvalue Calculation 
@@ -155,14 +156,31 @@ def expt_data():
         if item in  dict_expt_occurence.keys():
             dist_item = [1 for i in range(dict_expt_occurence[item])] + [0 for i in range(dict_var_occurence[item]-dict_expt_occurence[item])]
             rate, min, max = mean_confidence_interval(dist_item)
-            output[item] = {'TargetEventNumber' : dict_expt_occurence[item],  
-                            'FlagUseNumber' : dict_var_occurence[item], 
-                            'ConversionRate':   round(rate,2),
-                            'ChangeToBaseline' : round(rate-BaselineRate,2),
-                            'ConfidenceInterval': [ 0 if round(min,2)<0 else round(min,2), 1 if round(max,2)>1 else round(max,2)], 
-                            'P_value': round(1-stats.ttest_ind(dist_baseline, dist_item).pvalue,2)
+            confidenceInterval = [ 0 if round(min,2)<0 else round(min,2), 1 if round(max,2)>1 else round(max,2)]
+            pValue = round(1-stats.ttest_ind(dist_baseline, dist_item).pvalue,2)
+            output.append({ 'variation': item,
+                            'conversion' : dict_expt_occurence[item],  
+                            'uniqueUsers' : dict_var_occurence[item], 
+                            'conversionRate':   round(rate,2),
+                            'changeToBaseline' : round(rate-BaselineRate,2),
+                            'confidenceInterval': confidenceInterval, 
+                            'pValue': pValue,
+                            'isWinner': False,
+                            'isInvalid': True if pValue < 0.95 else False
                             } 
-#    print(output)
+                        )
+    print(output)
+    listValid = [output.index(item) for item in output if item['isInvalid'] == False]
+#    listValid = [0,1]
+    print(listValid)
+    if len(listValid) != 0: 
+        dictValid = {}
+        for index in listValid:
+            dictValid[index] = output[index]['conversionRate']
+        maxRateIndex = [k for k, v in sorted(dictValid.items(), key=lambda item: item[1])][-1]        
+        output[maxRateIndex]['isWinner'] = True
+
+#   print(output)
     endtime = datetime.now()
     print('processing time:') 
     print((endtime-startime))
