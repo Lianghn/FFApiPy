@@ -11,8 +11,10 @@ In this file, put lines:
     
 Then repalce localhost by your elasticsearch url  & replace elastic_password by password for user 'elastic'.
 
-Run:
 
+
+Run:
+    $>pip install -r requirements.txt
     $>python ExperimentApiPy.py
 
 
