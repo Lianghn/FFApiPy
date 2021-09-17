@@ -29,6 +29,6 @@ To Search Data from ElasticSearch according Index and Type:
 
 To Get Experiement Result from ElasticSearch :
 
-    $>curl localhost:5000/MVPExperimentResults -d '{"Flag" : {"Id": "FF__2__2__4__ffc-multi-variation-cache-test-data1-1630579986592","BaselineVariation": "A", "Variations" : ["A","Green"]}, "EventName": "TestEvent", "StartExptTime": 1631886446, "EndExptTime": 1631886480}' -H 'Content-Type: application/json' 
+    $>curl localhost:5000/api/ExperimentResults -d '{"Flag" : {"Id": "FF__2__2__4__ffc-multi-variation-cache-test-data1-1630579986592","BaselineVariation": "A", "Variations" : ["A","Green"]}, "EventName": "TestEvent", "StartExptTime": "-2183958941000", "EndExptTime": "7283148259000"}' -H 'Content-Type: application/json'
 
 Visualiz the Json data in : https://jsongrid.com/json-grid

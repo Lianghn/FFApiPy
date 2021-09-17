@@ -90,15 +90,28 @@ def expt_data():
             }
         }
     }
+
     res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
 
  # Query Expt data   
     query_body_B = {
-        "query": {
-            "match": {
-                'Type' : 'pageview'
+    "query": {
+        "bool": {
+            "must": {
+                "match": {
+                            'Type' : 'pageview'
+                }
+            },
+            "filter": {
+                "range": {
+                    "TimeStamp": {
+                        "gte": data['StartExptTime'],
+                        "lte": data['EndExptTime']
+                    }
+                }
             }
         }
+    }
     }
     res_B = es.search(index="experiments", body=query_body_B)
 
