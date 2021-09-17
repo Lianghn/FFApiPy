@@ -94,7 +94,7 @@ def expt_data():
 
     res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
     print(datetime.now().strftime('%s'))
- # Query Expt data   
+    # Query Expt data   
     query_body_B = {
     "query": {
         "bool": {
@@ -106,9 +106,9 @@ def expt_data():
             "filter": {
                 "range": {
                     "TimeStamp": {
-# when no start time selected: defaut time to 2000-01-01:01H
+                        # when no start time selected: defaut time to 2000-01-01:01H
                         "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
-# when no end time selected: defaut time to NOW
+                        # when no end time selected: defaut time to NOW
                         "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
                    }
                 }
@@ -118,7 +118,7 @@ def expt_data():
     }
     res_B = es.search(index="experiments", body=query_body_B)
 
-# Stat of Flag
+    # Stat of Flag
     dict_var_user = {}
     dict_var_occurence = {}
     for item in res_A['hits']['hits']:
