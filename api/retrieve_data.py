@@ -68,32 +68,47 @@ def expt_data():
     #   }
     ##########################################################
     # output format : 
-    #      {'var1' : 
-    #            { 'TargetEventNumber' : Number1, 
-    #              'UnqueVisitorsNumber' : Number2,  
-    #              'ConversionRate': Number3, 
-    #              'ChangesToBaseline': Number4, 
-    #              'ConfidentInterval': (value_min, value_max), 
-    #              'p_value': Number5 
-    #             }, 
-    #         'var2' :
-    #                ......
-    #       } 
+    # [ {  variation: ,  
+    #      conversion: ,  
+    #      uniqueUsers: ,  
+    #      conversionRate: ,  
+    #      confidenceInterval: ,  
+    #      changeToBaseLine: ,  
+    #      pValue: ,  
+    #      isBaseline: 
+    #      isWinner:
+    #      isInvaide: 
+    #  } 
+    #{...}
+    #...
+    #]
     ############################################################
     # Get data from frontend
     startime = datetime.now()
     data = request.get_json()
     # Query Flag data
     query_body_A = {
-        "query": {
-            "match": {
-                'FeatureFlagId': data['Flag']['Id'] 
+    "query": {
+        "bool": {
+            "must": {
+                "match": {
+                            'FeatureFlagId': data['Flag']['Id'] 
+                }
+            },
+            "filter": {
+                "range": {
+                    "TimeStamp": {
+                        # when no start time selected: defaut time to 2000-01-01:01H
+                        "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
+                        # when no end time selected: defaut time to NOW
+                        "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
+                   }
+                }
             }
         }
     }
-
+    }
     res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
-    print(datetime.now().strftime('%s'))
     # Query Expt data   
     query_body_B = {
     "query": {
@@ -195,7 +210,8 @@ def expt_data():
         maxRateIndex = [k for k, v in sorted(dictValid.items(), key=lambda item: item[1])][-1]        
         output[maxRateIndex]['isWinner'] = True
 
-    #   print(output)
+    print('ExptResults:')
+    print(output)
     endtime = datetime.now()
     print('processing time:') 
     print((endtime-startime))
