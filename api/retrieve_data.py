@@ -115,7 +115,7 @@ def expt_data():
         "bool": {
             "must": {
                 "match": {
-                            'Type' : 'pageview'
+                            'Type' : 'customEvent'
                 }
             },
             "filter": {
@@ -153,8 +153,8 @@ def expt_data():
     print(dict_var_user)
 
     # To delete when real data comes   
-    dict_var_user['Green'] = ['user1630749856']
-    dict_var_user['A'] = ['user1630750520','user1630749287']
+#    dict_var_user['Green'] = ['user1630749856']
+#    dict_var_user['A'] = ['user1630750520','user1630749287']
 
     # Stat of Expt.
     dict_expt_occurence = {}

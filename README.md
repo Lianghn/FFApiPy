@@ -21,6 +21,14 @@ Run:
     python ExperimentApiPy.py
 
 
+To Insert Test Flag Usage Data to ElasticSearch:
+
+    curl localhost:5000/api/InsertFlagUsageEvent
+
+To Insert Test Custom Event Data to ElasticSearch, add at first your secret to api/insert_data.py : "Secret" : "YourSecret" :
+
+    curl localhost:5000/api/InsertCustomEvent
+
 To Get Data from ElasticSearch according Index and Id:
 
     curl localhost:5000/GetData -d '{"index":"experiments", "id":"d_pNsHsBFqb7-mBbFsuM"}' -H 'Content-Type: application/json'
@@ -39,3 +47,4 @@ To Get Experiement Result from ElasticSearch :
 
 
 Visualiz the Json data in : https://jsongrid.com/json-grid
+
