@@ -7,7 +7,7 @@ import scipy as sp
 from scipy import stats
 import collections
 from datetime import datetime
- 
+import math
 es = connect_elasticsearch()
 
 @app.route('/', methods=['GET'])
@@ -84,83 +84,135 @@ def expt_data():
     #]
     ############################################################
     # Get data from frontend
+    Index = "ffvariationrequestindex"
     startime = datetime.now()
     data = request.get_json()
     # Query Flag data
     query_body_A = {
-    "query": {
-        "bool": {
-            "must": {
-                "match": {
+                "from": 0,
+                "query": {
+                    "bool": {
+                    "must": [
+                        {
+                        "match": {
                             'FeatureFlagId': data['Flag']['Id'] 
+                        }
+                        }, {
+                                "match": {
+                                    "EnvId.keyword": data['Flag']['Id'].split('__')[3]
+                                }
+                        }
+                    ],
+                    "filter": {
+                        "range": {
+                            "TimeStamp": {
+                                # when no start time selected: defaut time to 2000-01-01:01H
+                                "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
+                                # when no end time selected: defaut time to NOW
+                                "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
+                            }
+                        }
+                    }
+                    }
+                },
+                "aggs": {
+                    "keys": {
+                    "composite": {
+                        "sources": [
+                        {
+                            "UserKeyId": {
+                            "terms": {
+                                "field": "UserKeyId.keyword"
+                            }
+                            }
+                        },
+                        {
+                            "VariationValue": {
+                            "terms": {
+                                "field": "VariationValue.keyword"
+                            }
+                            }
+                        }
+                        ],
+                        "size": 10000
+                    }
+                    }
+                },
+                "size": 0
                 }
-            },
-            "filter": {
-                "range": {
-                    "TimeStamp": {
-                        # when no start time selected: defaut time to 2000-01-01:01H
-                        "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
-                        # when no end time selected: defaut time to NOW
-                        "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
-                   }
-                }
-            }
-        }
-    }
-    }
-    res_A = es.search(index="ffvariationrequestindex", body=query_body_A)
+                    
+    res_A = es.search(index=Index, body=query_body_A)
     # Query Expt data   
-    query_body_B = {
-    "query": {
-        "bool": {
-            "must": {
-                "match": {
-                            'Type' : 'customEvent'
+    Index = "experiments"
+    query_body_B ={
+                    "from": 0,
+                    "query": {
+                        "bool": {
+                            "must": [{
+                                "match": {
+                                            'EventName' : data['EventName']
+                                }
+                            }, {
+                                "match": {
+                                    "EnvironmentId.keyword": data['Flag']['Id'].split('__')[3]
+                                }
+                            }],
+                            "filter": {
+                                "range": {
+                                    "TimeStamp": {
+                                        # when no start time selected: defaut time to 2000-01-01:01H
+                                        "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
+                                        # when no end time selected: defaut time to NOW
+                                        "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "aggs": {
+                        "keys": {
+                            "composite": {
+                                "sources": [{
+                                    "UserKeyId": {
+                                        "terms": {
+                                            "field": "User.FFUserKeyId.keyword"
+                                        }
+                                    }
+                                }],
+                                "size": 20
+                            }
+                        }
+                    },
+                    "size": 0
                 }
-            },
-            "filter": {
-                "range": {
-                    "TimeStamp": {
-                        # when no start time selected: defaut time to 2000-01-01:01H
-                        "gte": '946731600000' if data['StartExptTime'] == "" else data['StartExptTime'],
-                        # when no end time selected: defaut time to NOW
-                        "lte":  datetime.now().strftime('%s')+'000' if  data['EndExptTime'] == "" else data['EndExptTime']
-                   }
-                }
-            }
-        }
-    }
-    }
-    res_B = es.search(index="experiments", body=query_body_B)
-
+    res_B = es.search(index=Index, body=query_body_B)
+ 
     # Stat of Flag
     dict_var_user = {}
     dict_var_occurence = {}
-    for item in res_A['hits']['hits']:
-        if item['_source']['VariationValue'] not in list(dict_var_occurence.keys()) :
-            dict_var_occurence[ item['_source']['VariationValue'] ]  = 1
-            dict_var_user[ item['_source']['VariationValue'] ]  = [item['_source']['FFUserName']]
+    for item in res_A['aggregations']['keys']['buckets']:
+        value = item['key']['VariationValue']
+        user  = item['key']['UserKeyId']
+        if  value not in list(dict_var_occurence.keys()) :
+            dict_var_occurence[ value ]  = 1
+            dict_var_user[ value ]  = [user]
         else :
-            dict_var_occurence[ item['_source']['VariationValue'] ] = dict_var_occurence[ item['_source']['VariationValue'] ] + 1
-            dict_var_user[ item['_source']['VariationValue'] ]  =  dict_var_user[ item['_source']['VariationValue'] ] + [item['_source']['FFUserName']]
+            dict_var_occurence[ value] = dict_var_occurence[ user] + 1
+            dict_var_user[ value ]  =  dict_var_user[ value] + [user]
 
     print('dictionary of flag var:occurence')
     print(dict_var_occurence)
 
     for item in dict_var_user.keys():
         dict_var_user[item] = list(set(dict_var_user[item]))
-    print('dictionary of flag var:usr')
-    print(dict_var_user)
-
-    # To delete when real data comes   
-#    dict_var_user['Green'] = ['user1630749856']
-#    dict_var_user['A'] = ['user1630750520','user1630749287']
+ 
 
     # Stat of Expt.
     dict_expt_occurence = {}
-    for item in res_B['hits']['hits']:
+    for item in res_B['aggregations']['keys']['buckets']:
+        user  = item['key']['UserKeyId']
         for it in dict_var_user.keys():
-            if item['_source']['User']['FFUserName'] in dict_var_user[it] :
+            if user in dict_var_user[it] :
                 if it not in list(dict_expt_occurence.keys()):
                     dict_expt_occurence[it] = 1
                 else:
@@ -187,6 +239,8 @@ def expt_data():
             rate, min, max = mean_confidence_interval(dist_item)
             confidenceInterval = [ 0 if round(min,2)<0 else round(min,2), 1 if round(max,2)>1 else round(max,2)]
             pValue = round(1-stats.ttest_ind(dist_baseline, dist_item).pvalue,2)
+
+        
             output.append({ 'variation': item,
                             'conversion' : dict_expt_occurence[item],  
                             'uniqueUsers' : dict_var_occurence[item], 
@@ -196,12 +250,12 @@ def expt_data():
                             'pValue': pValue,
                             'isBaseline': True if data['Flag']['BaselineVariation'] == item else False, 
                             'isWinner': False,
-                            'isInvalid': True if pValue < 0.95 else False
+                            'isInvalid': True if (pValue < 0.95) or math.isnan(pValue) else False
                             } 
                         )
     # Get winner variation
     listValid = [output.index(item) for item in output if item['isInvalid'] == False]
-    #    listValid = [0,1]
+
     # If at least one variation is valid:
     if len(listValid) != 0: 
         dictValid = {}
